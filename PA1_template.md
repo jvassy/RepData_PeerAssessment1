@@ -1,0 +1,140 @@
+---
+title: "Peer Assessment 1"
+output: html_document
+---
+
+This will guide you through the steps required to complete Peer Assignment 1. 
+
+First, you will need to install the "date" and "plyr" packages, if not already installed.
+
+install.packages("date")
+
+install.packages("plyr")
+
+Then create a temporary folder, download the data from the course website, and read the unzipped file into a data frame "activity".
+
+```r
+temp <- tempfile()
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip", temp, method="curl")
+activity <- read.csv(unz(temp, "activity.csv"))
+unlink(temp)
+```
+
+Format the "date" variable as a date.
+
+```r
+library(date)
+activity$date<-as.Date(activity$date, "%Y-%m-%d")
+```
+
+Plot a histogram of steps taken daily.
+
+```r
+hist(tapply(activity$steps, activity$date, sum), main="Histogram of Steps Per Day", xlab="Number of steps per day", ylab="Frequency", ylim=c(0,25), breaks=10)
+```
+
+![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3-1.png) 
+
+Then calculate the mean steps per day.
+
+```r
+mean(tapply(activity$steps, activity$date, sum), na.rm=TRUE)
+```
+
+```
+## [1] 10766.19
+```
+
+And then the median steps per day.
+
+```r
+median(tapply(activity$steps, activity$date, sum), na.rm=TRUE)
+```
+
+```
+## [1] 10765
+```
+
+Plot the daily activity pattern, averaged over all days.
+
+```r
+plot(as.numeric(levels(as.factor(activity$interval))), tapply(activity$steps, activity$interval, mean, na.rm=TRUE), type="l", main="Mean Steps per 5-Minute Interval", xlab="5-Minute Interval", ylab="Mean Steps")
+```
+
+![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6-1.png) 
+
+Then identify the 5-minute interval with the highest mean number of steps over all days.
+
+```r
+activity$interval[which.max(tapply(activity$steps, activity$interval, mean, na.rm=TRUE))]
+```
+
+```
+## [1] 835
+```
+
+Next, we'll impute missing values.  First, count the intervals with missing steps.
+
+```r
+sum(is.na(activity$steps))
+```
+
+```
+## [1] 2304
+```
+
+Impute the missing values with the median value of steps for that interval across all days.
+
+```r
+library(plyr)
+activityimp <- ddply(activity, .(interval), transform, steps=ifelse(is.na(steps), median(steps, na.rm=TRUE), steps))
+```
+
+Plot a histogram of daily steps with the new imputed values.
+
+```r
+hist(tapply(activityimp$steps, activity$date, sum), main="Histogram of Steps Per Day", xlab="Number of steps per day", ylab="Frequency", ylim=c(0,25), breaks=10)
+```
+
+![plot of chunk unnamed-chunk-10](figure/unnamed-chunk-10-1.png) 
+
+Calculate the mean steps per day with new imputed values.
+
+```r
+mean(tapply(activityimp$steps, activityimp$date, sum), na.rm=TRUE)
+```
+
+```
+## [1] 9503.869
+```
+
+And then calculate the median steps per day with new imputed values.
+
+```r
+median(tapply(activityimp$steps, activityimp$date, sum), na.rm=TRUE)
+```
+
+```
+## [1] 10395
+```
+Note that the new values (mean 9503 and median 10395) are lower than those from the non-imputed data (mean 10766 and median 10765).
+
+Next, we'll examine the data by weekdays and weekend days. First, classify the dates as weekdays or weekend days and subset the data into two data sets.
+
+```r
+activityimp$weekend <- ifelse(weekdays(activityimp$date)=="Saturday"|weekdays(activityimp$date)=="Sunday", TRUE, FALSE)
+activityweek<-activityimp[activityimp$weekend=="FALSE",]
+activityweekend<-activityimp[activityimp$weekend=="TRUE",]
+```
+
+Plot the average daily activity patterns for weekdays and weekend days separately.
+
+```r
+par(mfrow=c(2,1))
+## Weekday plot
+plot(as.numeric(levels(as.factor(activityweek$interval))), tapply(activityweek$steps, activityweek$interval, mean, na.rm=TRUE), type="l", main="Mean Steps per 5-Minute Interval on Weekdays", xlab="5-Minute Interval", ylab="Mean Steps")
+## Weekend plot
+plot(as.numeric(levels(as.factor(activityweekend$interval))), tapply(activityweekend$steps, activityweekend$interval, mean, na.rm=TRUE), type="l", main="Mean Steps per 5-Minute Interval on Weekend Days", xlab="5-Minute Interval", ylab="Mean Steps", ylim=c(0,200))
+```
+
+![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-1.png) 
